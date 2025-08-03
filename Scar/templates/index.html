@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Autonomous Surveillance Car</title>
+</head>
+<body>
+    <h1>Autonomous Surveillance Car</h1>
+    <img src="{{ url_for('video_feed') }}" width="640" height="480">
+    <form action="/forward" method="post"><button type="submit">Forward</button></form>
+    <form action="/backward" method="post"><button type="submit">Backward</button></form>
+    <form action="/left" method="post"><button type="submit">Left</button></form>
+    <form action="/right" method="post"><button type="submit">Right</button></form>
+    <form action="/stop" method="post"><button type="submit">Stop</button></form>
+    <form action="/set_mode" method="post">
+        <select name="mode">
+            <option value="autonomous">Autonomous</option>
+            <option value="manual">Manual</option>
+        </select>
+        <button type="submit">Set Mode</button>
+    </form>
+    <p>Current mode: {{ mode }}</p>
+</body>
+</html>

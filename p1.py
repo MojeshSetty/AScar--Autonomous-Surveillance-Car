@@ -1,0 +1,139 @@
+import RPi.GPIO as GPIO
+import time
+import pigpio
+
+# Define GPIO pins (based on your configuration)
+TRIG = 5
+ECHO = 6
+SERVO = 18
+ENA = 17  # Motor A speed
+IN1 = 27  # Motor A direction
+IN2 = 10
+ENB = 25  # Motor B speed
+IN3 = 23  # Motor B direction
+IN4 = 24
+
+# Setup GPIO
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(TRIG, GPIO.OUT)
+GPIO.setup(ECHO, GPIO.IN)
+GPIO.setup(ENA, GPIO.OUT)
+GPIO.setup(ENB, GPIO.OUT)
+GPIO.setup(IN1, GPIO.OUT)
+GPIO.setup(IN2, GPIO.OUT)
+GPIO.setup(IN3, GPIO.OUT)
+GPIO.setup(IN4, GPIO.OUT)
+
+# Motor speed control (PWM)
+pwm_A = GPIO.PWM(ENA, 1000)  # Frequency = 1kHz
+pwm_B = GPIO.PWM(ENB, 1000)
+pwm_A.start(0)
+pwm_B.start(0)
+
+# Initialize PiGPIO for smoother servo control
+pi = pigpio.pi()
+if not pi.connected:
+    exit()
+
+# Function to get distance from ultrasonic sensor
+def get_distance():
+    GPIO.output(TRIG, True)
+    time.sleep(0.00001)
+    GPIO.output(TRIG, False)
+
+    start_time = time.time()
+    stop_time = time.time()
+
+    while GPIO.input(ECHO) == 0:
+        start_time = time.time()
+    while GPIO.input(ECHO) == 1:
+        stop_time = time.time()
+
+    elapsed_time = stop_time - start_time
+    distance = (elapsed_time * 34300) / 2  # Convert to cm
+    return round(distance, 2)
+
+# Function to move the robot
+def move_forward(speed):
+    pwm_A.ChangeDutyCycle(speed)
+    pwm_B.ChangeDutyCycle(speed)
+    GPIO.output(IN1, True)
+    GPIO.output(IN2, False)
+    GPIO.output(IN3, True)
+    GPIO.output(IN4, False)
+
+def stop():
+    pwm_A.ChangeDutyCycle(0)
+    pwm_B.ChangeDutyCycle(0)
+    GPIO.output(IN1, False)
+    GPIO.output(IN2, False)
+    GPIO.output(IN3, False)
+    GPIO.output(IN4, False)
+
+def turn_right():
+    pwm_A.ChangeDutyCycle(70)
+    pwm_B.ChangeDutyCycle(70)
+    GPIO.output(IN1, False)
+    GPIO.output(IN2, True)
+    GPIO.output(IN3, True)
+    GPIO.output(IN4, False)
+    time.sleep(0.7)
+    stop()
+
+def turn_left():
+    pwm_A.ChangeDutyCycle(70)
+    pwm_B.ChangeDutyCycle(70)
+    GPIO.output(IN1, True)
+    GPIO.output(IN2, False)
+    GPIO.output(IN3, False)
+    GPIO.output(IN4, True)
+    time.sleep(0.7)
+    stop()
+
+def scan_and_move():
+    """ If object detected, check right and left, then decide movement """
+    stop()
+    
+    # Check right
+    pi.set_servo_pulsewidth(SERVO, 2500)  # Move servo to 90° (right)
+    time.sleep(0.5)
+    right_distance = get_distance()
+
+    # Check left
+    pi.set_servo_pulsewidth(SERVO, 500)  # Move servo to -90° (left)
+    time.sleep(0.5)
+    left_distance = get_distance()
+
+    pi.set_servo_pulsewidth(SERVO, 1500)  # Reset to center
+    time.sleep(0.5)
+
+    if right_distance > 20:
+        turn_right()
+    elif left_distance > 20:
+        turn_left()
+    else:
+        print("No clear path. Staying in place.")
+        stop()
+
+# Main loop
+try:
+    while True:
+        distance = get_distance()
+        print(f"Distance: {distance} cm")
+
+        if distance > 50:
+            move_forward(100)  # Full speed
+        elif 20 < distance <= 50:
+            move_forward(50)   # Slow speed
+        else:
+            print("Obstacle detected! Stopping and scanning...")
+            scan_and_move()
+
+        time.sleep(0.1)
+
+except KeyboardInterrupt:
+    print("Stopping...")
+    stop()
+    pi.set_servo_pulsewidth(SERVO, 0)  # Turn off servo
+    pi.stop()
+    GPIO.cleanup()

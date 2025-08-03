@@ -1,0 +1,95 @@
+import RPi.GPIO as GPIO
+import time
+
+# Pin Definitions
+TRIG = 23
+ECHO = 24
+MOTOR1_IN1 = 17
+MOTOR1_IN2 = 27
+MOTOR2_IN3 = 22
+MOTOR2_IN4 = 10
+
+# Setup
+GPIO.setmode(GPIO.BCM)
+uuuuUUUUUUUUUUGPIO.setup(TRIG, GPIO.OUT)
+GPIO.setup(ECHO, GPIO.IN)
+GPIO.setup(MOTOR1_IN1, GPIO.OUT)
+GPIO.setup(MOTOR1_IN2, GPIO.OUT)
+GPIO.setup(MOTOR2_IN3, GPIO.OUT)
+GPIO.setup(MOTOR2_IN4, GPIO.OUT)
+
+# Motor control funcrd():
+    GPIO.output(MOTOR1_IN1, GPIO.HIGH)
+    GPIO.output(MOTOR1_IN2, GPIO.LOW)
+    GPIO.output(MOTOR2_IN3, GPIO.HIGH)
+    GPIO.output(MOTOR2_IN4, GPIO.LOW)
+
+def move_backward():
+    GPIO.output(MOTOR1_IN1, GPIO.LOW)
+    GPIO.output(MOTOR1_IN2, GPIO.HIGH)
+    GPIO.output(MOTOR2_IN3, GPIO.LOW)
+    GPIO.output(MOTOR2_IN4, GPIO.HIGH)
+
+def turn_left():
+    GPIO.output(MOTOR1_IN1, GPIO.LOW)
+    GPIO.output(MOTOR1_IN2, GPIO.HIGH)
+    GPIO.output(MOTOR2_IN3, GPIO.HIGH)
+    GPIO.output(MOTOR2_IN4, GPIO.LOW)
+
+def turn_right():
+    GPIO.output(MOTOR1_IN1, GPIO.HIGH)
+    GPIO.output(MOTOR1_IN2, GPIO.LOW)
+    GPIO.output(MOTOR2_IN3, GPIO.LOW)
+    GPIO.output(MOTOR2_IN4, GPIO.HIGH)
+
+def stop():
+    GPIO.output(MOTOR1_IN1, GPIO.LOW)
+    GPIO.output(MOTOR1_IN2, GPIO.LOW)
+    GPIO.output(MOTOR2_IN3, GPIO.LOW)
+    GPIO.output(MOTOR2_IN4, GPIO.LOW)
+
+# Function to get distance from ultrasonic sensor
+def get_distance():
+    GPIO.output(TRIG, True)
+    time.sleep(0.00001)
+    GPIO.output(TRIG, False)
+
+    start_time = time.time()
+    stop_time = time.time()
+
+    while GPIO.input(ECHO) == 0:
+        start_time = time.time()
+
+    while GPIO.input(ECHO) == 1:
+        stop_time = time.time()
+
+    elapsed_time = stop_time - start_time
+    distance = (elapsed_time * 34300) / 2
+    return distance
+
+# Main loop
+try:
+    while True:
+        dist = get_distance()
+        print(f"Distance: {dist:.2f} cm")
+
+        if dist > 30:
+            move_forward()
+        elif 10 < dist <= 30:
+            stop()
+            time.sleep(1)
+            turn_left()
+            time.sleep(0.5)
+        else:
+            stop()
+            time.sleep(1)
+            move_backward()
+            time.sleep(1)
+            turn_right()
+            time.sleep(0.5)
+
+        time.sleep(0.1)
+
+except KeyboardInterrupt:
+    print("Stopping")
+    GPIO.cleanup()
